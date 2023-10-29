@@ -330,8 +330,7 @@ function mostrarLineas(datos, escalaX, escalaY, posicion) {
       // Resaltar todas las líneas al pasar el cursor
       lineas.style("opacity", 1).attr("stroke-width", 3);
       
-    }) 
-    
+    })
     .on("mouseout", function (d, i, nodes) {
       // Restaurar la opacidad de todas las líneas
       lineas.style("opacity", 0.3).attr("stroke-width", 3);
