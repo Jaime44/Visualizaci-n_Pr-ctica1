@@ -173,9 +173,16 @@ function actualizarLineas(datos, xScale, yScale, color) {
              .call(ejeY);
 }
     
+const colores = {}; // Objeto para almacenar los colores
+    
 function dibujarCheckbox(datos, posicion) {
     const color = colorScale(posicion); // Obtén un color único para este checkbox
-
+    
+    const variableNombre = datos.MetaData[2].Nombre;
+    colores[variableNombre] = color; // Usa Variable.Nombre como claveclave
+    
+    console.log(`WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW COLOR: ${color}|VARIABLE NOMBRE: ${variableNombre}| COLORES: ${colores[variableNombre]}`);
+    
     // Crea un checkbox
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -313,7 +320,7 @@ function mostrarLineas(datos, escalaX, escalaY, posicion) {
     })
     
     .on("click", function(d){
-    	handleNodeClickBar(d, color)
+    	handleNodeClickBar(d)
     })
     
     .on("mouseout", function (d, i, nodes) {
@@ -364,24 +371,22 @@ function pintarTooltip(d){
         return media;
     }            
     
-    
-    function filtrarPorAnio(datos, Anio) {
+    function filtrarPorAnio(datos, Anio, trimestre) {
         console.log("filtrarDatosPorAño ----------> ---------------------------------------------------------------------------------- STEP 0");
         const subconj = [];
         datos.forEach(function (d) {
-               
             const tieneAnio = d.Data.some(item => item.Anyo === Anio);
             const tieneCCAA = d.MetaData.some(item => item.Variable.Nombre === "Comunidades y Ciudades Autónomas" && item.Variable.Codigo === "CCAA");
             const tieneTasaParo = d.Nombre.includes("Tasa de paro de la población. Ambos sexos.") && d.Nombre.includes("Todas las edades.");
+            const tieneTrimestre = d.Data.some(item => item.T3_Periodo === trimestre);
 
-            if (tieneCCAA && tieneTasaParo && tieneAnio) {
+            if (tieneCCAA && tieneTasaParo && tieneAnio && tieneTrimestre) {
                 const subconjData = d.Data.filter(item => {
                     const itemAnio = new Date(item.Fecha).getFullYear();
                     return itemAnio === Anio;
                 });
-                
+
                 if (subconjData.length > 0) {
-                    const media = calcularMedia(subconjData);
                     const datosFiltrados = {
                         COD: d.COD,
                         Nombre: d.Nombre,
@@ -389,40 +394,41 @@ function pintarTooltip(d){
                         T3_Escala: d.T3_Escala,
                         MetaData: d.MetaData,
                         Data: [{
-                            Fecha: subconjData[0].Fecha, // Puedes elegir la fecha que desees aquí
+                            Fecha: subconjData[0].Fecha,
                             T3_TipoDato: subconjData[0].T3_TipoDato,
-                            T3_Periodo: "T0",
+                            T3_Periodo: subconjData[0].T3_Periodo,
                             Anyo: Anio,
-                            Valor: media.toFixed(2) // Redondear
+                            Valor: subconjData[0].Valor
                         }]
                     };
                     subconj.push(datosFiltrados);
                 }
-                
             }
         });
-              
+
         console.log("filtrarDatosPorAño ----------> ---------------------------------------------------------------------------------- STEP 1");
         return subconj;
-    }
-                                            
-                                                      
-                                            
+    }                                        
 
 
     // Función para manejar el clic en un nodo de la gráfica de líneas
-    function handleNodeClickBar(d, color) {
+    function handleNodeClickBar(d) {
         console.log("handleNodeClick ----------> ---------------------------------------------------------------------------------- STEP 0"); 
         
         // Obtiene el año del nodo clicado
         const añoSeleccionado = new Date(d.Fecha).getFullYear();
+        
+        const trimestreSeleccionado = d.T3_Periodo
+        
         console.log("    handleNodeClick ----------> Año Seleccionado:", añoSeleccionado); // Mostrar el valor de añoSeleccionado en la consola
+        
+        console.log(`    handleNodeClick ----------> Año Seleccionado: ${añoSeleccionado} - Trimestre: ${trimestreSeleccionado}`);
 
         
         console.log("handleNodeClick ----------> ---------------------------------------------------------------------------------- STEP 1"); 
         
         // Filtra los datos de barras según el año seleccionado
-        const datosBarras = filtrarPorAnio(datosCompletos, añoSeleccionado);
+        const datosBarras = filtrarPorAnio(datosCompletos, añoSeleccionado, trimestreSeleccionado);
         
         console.log("handleNodeClick ----------> ---------------------------------------------------------------------------------- STEP 2"); 
         
@@ -432,7 +438,7 @@ function pintarTooltip(d){
         console.log("handleNodeClick ----------> ---------------------------------------------------------------------------------- STEP 3"); 
 
         // Muestra las barras correspondientes al año seleccionado
-        crearGraficoBarras(datosBarras, color);
+        crearGraficoBarras(datosBarras);
         
         console.log("handleNodeClick ----------> ---------------------------------------------------------------------------------- STEP 4"); 
     }
@@ -440,7 +446,7 @@ function pintarTooltip(d){
     
     
     
-    function crearGraficoBarras(datos, color) {
+    function crearGraficoBarras(datos) {
         
         // Eliminar la gráfica de barras anterior por su id si existe
         d3.select("#grafico-barras").remove();
@@ -467,9 +473,6 @@ function pintarTooltip(d){
             };
         });
         
-        console.log(`**************************************** ${d3.max(datosOrganizados, d => d.valor)}`);
-        console.log(`######################################## ${datosOrganizados}`);
-        
         const escalaX = d3.scaleBand()
             .domain(datosOrganizados.map(d => d.comunidadAutonoma))
             .range([0, ancho])
@@ -480,9 +483,6 @@ function pintarTooltip(d){
             .nice()
             .range([alto, 0]);
         
-        const interpolateColor = d3.interpolate(d3.color("white"), d3.color(color));
-
-        
         svg.selectAll(".barra")
             .data(datosOrganizados)
             .enter().append("rect")
@@ -491,7 +491,7 @@ function pintarTooltip(d){
             .attr("width", escalaX.bandwidth())
             .attr("y", d => alto) // Inicialmente, las barras comienzan desde la parte inferior del gráfico
             .attr("height", 0) // Inicialmente, las barras tienen altura cero
-            .attr("fill",  d => interpolateColor(0.5))
+            .attr("fill",d => colores[d.comunidadAutonoma])
             .transition() // Inicia la transición
             .delay((d, i) => i * 120) // Añade un retraso creciente para cada barra
             .duration(400) // Duración de la transición en milisegundos
@@ -512,7 +512,7 @@ function pintarTooltip(d){
             .style("font-size", "12px"); // Ajusta el tamaño de la fuente
         
         // Añadir título al gráfico
-        const titulo = "Paro total por CCAA " + datos[0].Data[0].Anyo;
+        const titulo = "Paro del trimestre " +datos[0].Data[0].T3_Periodo+ " por CCAA " + datos[0].Data[0].Anyo;
         svg.append("text")
             .attr("x", ancho / 2) // Posición X en el centro del SVG
             .attr("y", -margen.superior / 2) // Posición Y arriba del gráfico
