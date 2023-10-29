@@ -236,10 +236,10 @@ var tooltip = d3.select("body").append("div").attr("class", "tooltip");
     
     
 function mostrarLineas(datos, escalaX, escalaY, posicion) {
-  const color = colorScale(posicion);
-  const circlesGroup=svg.append("g");  
-  const lineasGroup = svg.append("g"); // Crea un grupo para las líneas
- const textoGroup = svg.append("g");
+    const color = colorScale(posicion);
+    const circlesGroup=svg.append("g");  
+    const lineasGroup = svg.append("g"); // Crea un grupo para las líneas
+    const textoGroup = svg.append("g");
     
 
 //DIBUJAMOS LINEAS
@@ -372,18 +372,22 @@ function pintarTooltip(d){
     }            
     
     function filtrarPorAnio(datos, Anio, trimestre) {
-        console.log("filtrarDatosPorAño ----------> ---------------------------------------------------------------------------------- STEP 0");
+        console.log("filtrarDatosPorAño ----------> ---------------------------------------------------------------------------------- STEP 0 TRIMESTRE: ", trimestre);
         const subconj = [];
         datos.forEach(function (d) {
             const tieneAnio = d.Data.some(item => item.Anyo === Anio);
             const tieneCCAA = d.MetaData.some(item => item.Variable.Nombre === "Comunidades y Ciudades Autónomas" && item.Variable.Codigo === "CCAA");
             const tieneTasaParo = d.Nombre.includes("Tasa de paro de la población. Ambos sexos.") && d.Nombre.includes("Todas las edades.");
             const tieneTrimestre = d.Data.some(item => item.T3_Periodo === trimestre);
-
+            
+            console.log("filtrarDatosPorAño ----------> ---------------------------------------------------------------------------------- STEP 1: TRIMESTRE: ",tieneTrimestre);
+            
             if (tieneCCAA && tieneTasaParo && tieneAnio && tieneTrimestre) {
                 const subconjData = d.Data.filter(item => {
                     const itemAnio = new Date(item.Fecha).getFullYear();
-                    return itemAnio === Anio;
+                    const itemTrimestre = item.T3_Periodo;
+                    
+                    return itemAnio === Anio && itemTrimestre === trimestre;
                 });
 
                 if (subconjData.length > 0) {
@@ -406,7 +410,7 @@ function pintarTooltip(d){
             }
         });
 
-        console.log("filtrarDatosPorAño ----------> ---------------------------------------------------------------------------------- STEP 1");
+        console.log("filtrarDatosPorAño ----------> ---------------------------------------------------------------------------------- STEP 2");
         return subconj;
     }                                        
 
